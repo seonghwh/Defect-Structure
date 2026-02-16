@@ -1,2 +1,3 @@
-# Defect-Structure
-This code is for BaTiO3 defect structure calculation written by Ryu, and translated into python by John.
+Status: Notebooks are archived in notebooks/archive.
+
+Next: Building a new standard implementation starting from MnY codoped.
