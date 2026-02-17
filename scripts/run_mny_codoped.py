@@ -29,8 +29,8 @@ Y_eq = {r: 7.7e19 for r in ratios}
 
 # Quenched totals (NOTE: your notebook is inconsistent: 1.000 & 0.999 use 2x, but 0.994 does not.)
 # I’m preserving your notebook behavior exactly for now.
-Mn_q = {1.000: 2 * 7.7e19, 0.999: 2 * 7.7e19, 0.994: 7.7e19}
-Y_q  = {1.000: 2 * 7.7e19, 0.999: 2 * 7.7e19, 0.994: 7.7e19}
+Mn_q = {r: 7.7e19 for r in ratios}
+Y_q  = {r: 7.7e19 for r in ratios}
 
 
 def main() -> None:

@@ -174,37 +174,38 @@ def solve_quenched_mny(
     frozen_eq: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Quenched (low-T) case:
-      - ionic defects frozen from the provided equilibrium dataframe (same pO2 grid)
-      - electrons/holes + Mn redox re-equilibrate at TQK (matches your notebook cells 9-11)
+    Quenched (low-T) case with *partial* re-equilibration:
+      - VBa and VTi are frozen from high-T equilibrium
+      - oxygen vacancies VO re-equilibrate at TQK with pO2
+      - electrons/holes + Mn redox re-equilibrate at TQK
     """
     rcQ = reaction_constants(TQK)
-    KiQ, KMn43Q, KMn32Q = rcQ.Ki, rcQ.KMn43, rcQ.KMn32
+    KRQ, KiQ, KMn43Q, KMn32Q = rcQ.KR, rcQ.Ki, rcQ.KMn43, rcQ.KMn32
 
-    # Frozen ionic arrays from equilibrium
-    VO_f = frozen_eq["VO2"].to_numpy(dtype=float)
+    # Frozen ionic defects (except VO)
     VBa_f = frozen_eq["VBa2"].to_numpy(dtype=float)
     VTi_f = frozen_eq["VTi4"].to_numpy(dtype=float)
 
     rows = []
     for i, y in enumerate(pO2_grid):
-        y = float(y)  # not used in quenched neutrality (VO is frozen)
+        y = float(y)
 
         def neutrality(n: float) -> float:
             p = KiQ / n
-            Mn0, Mn1, Mn2, mn_charge = _mn_partition(n, Mn_total_quench, KMn43Q, KMn32Q)
+            VO = KRQ / (n**2 * np.sqrt(y))  # <-- VO equilibrates at TQK
+            _, _, _, mn_charge = _mn_partition(n, Mn_total_quench, KMn43Q, KMn32Q)
 
             if abs(ratio_AB - 1.0) < 1e-12:
-                neg_ionic = 2.0 * VBa_f[i] + 4.0 * VTi_f[i]
+                neg_ionic = 2.0 * VBa_f[i] + 4.0 * VTi_f[i]  # frozen
             else:
-                neg_ionic = 2.0 * VBa_f[i]
+                neg_ionic = 2.0 * VBa_f[i]  # frozen
 
-            # n + frozen ionic negative charge + Mn charge - (p + 2*VO_frozen + Y) = 0
-            return (n + neg_ionic + mn_charge) - (p + 2.0 * VO_f[i] + Y_total_quench)
+            return (n + neg_ionic + mn_charge) - (p + 2.0 * VO + Y_total_quench)
 
-        n = solve_log10_n(neutrality, umin=-20.0, umax=30.0)
+        n = solve_log10_n(neutrality, umin=-30.0, umax=35.0)
 
         p = KiQ / n
+        VO = KRQ / (n**2 * np.sqrt(y))  # <-- final equilibrated VO
         Mn0, Mn1, Mn2, _ = _mn_partition(n, Mn_total_quench, KMn43Q, KMn32Q)
 
         rows.append(
@@ -213,9 +214,9 @@ def solve_quenched_mny(
                 log10_pO2=np.log10(y),
                 n=n,
                 p=p,
-                VO2=VO_f[i],     # frozen
+                VO2=VO,          # <-- NOT frozen anymore
                 VBa2=VBa_f[i],   # frozen
-                VTi4=VTi_f[i],   # frozen (0 for ratio<1)
+                VTi4=VTi_f[i],   # frozen
                 Mn0=Mn0,
                 Mn1=Mn1,
                 Mn2=Mn2,
