@@ -24,6 +24,19 @@ LABELS = {
     "YBa": r"$\mathrm{Y}_{\mathrm{Ba}}^{\bullet}$",
 }
 
+def format_acceptor_note(df: pd.DataFrame) -> str:
+    """
+    Returns a short note like 'Acc=1.55e18 cm^-3 (charge=1)' if present and nonzero,
+    otherwise returns ''.
+    """
+    if "Acc" not in df.columns:
+        return ""
+    acc = float(df["Acc"].iloc[0])
+    if acc <= 0:
+        return ""
+    ch = int(df["Acc_charge"].iloc[0]) if "Acc_charge" in df.columns else 1
+    return f"Acc={acc:.2e} cm^-3 (charge={ch})"
+
 def log10_safe(x: np.ndarray) -> np.ndarray:
     x = np.asarray(x, dtype=float)
     out = np.full_like(x, np.nan, dtype=float)
@@ -53,6 +66,19 @@ def plot_df(df: pd.DataFrame, title: str, outpath: Path, cols: list[str], air_pO
     ax.set_xlabel(r"$\log_{10}(p\mathrm{O}_2)\;(\mathrm{atm})$")
     ax.set_ylabel(r"$\log_{10}([\,]\;)\;(\mathrm{cm}^{-3})$")
     ax.set_title(title)
+
+    # Optional: show acceptor note on-plot for undoped
+    if "Acc" in df.columns:
+        acc = float(df["Acc"].iloc[0])
+        if acc > 0:
+            ch = int(df["Acc_charge"].iloc[0]) if "Acc_charge" in df.columns else 1
+            ax.text(
+                0.02, 0.98,
+                f"Acc={acc:.2e} cm$^{{-3}}$ (charge={ch})",
+                transform=ax.transAxes,
+                ha="left", va="top",
+            )
+            
     ax.grid(True, alpha=0.3)
 
     ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=True)
@@ -75,6 +101,7 @@ def main() -> None:
         raise FileNotFoundError(f"Missing file: {csv}. Run the corresponding run script first.")
 
     df = pd.read_csv(csv)
+    acc_note = format_acceptor_note(df) if args.case == "undoped" else ""
 
     T = None
     if args.state == "eq" and "TK" in df.columns:
@@ -87,6 +114,8 @@ def main() -> None:
     else:
         Tc = f"{T - 273} °C" if T is not None else ""
         title = f"{args.case.upper()} BTO (A/B={args.ratio:.3f}); {args.state}; T={Tc}".strip()
+        if acc_note:
+            title += f"; {acc_note}"
 
     cols = ["n", "p", "VO2", "VBa2", "VTi4", "Mn0", "Mn1", "Mn2", "YBa"]
 

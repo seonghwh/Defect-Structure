@@ -11,6 +11,8 @@ def solve_equilibrium_undoped(
     pO2_grid: np.ndarray,
     TK: float,
     ratio_AB: float,
+    acc_cm3: float = 0.0,
+    acc_charge: int = 1,
 ) -> pd.DataFrame:
     """
     Undoped BaTiO3 equilibrium at TK.
@@ -36,7 +38,8 @@ def solve_equilibrium_undoped(
                 VTi = 0.0
                 neg_ionic = 2.0 * VBa
 
-            return (n + neg_ionic) - (p + 2.0 * VO)
+            acc = float(acc_charge) * float(acc_cm3)   # negative charge contribution
+            return (n + neg_ionic + acc) - (p + 2.0 * VO)
 
         n = solve_log10_n(neutrality, umin=-30.0, umax=35.0)
 
@@ -60,6 +63,8 @@ def solve_equilibrium_undoped(
                 VTi4=VTi,
                 ratio_AB=ratio_AB,
                 TK=TK,
+                Acc=acc_cm3,
+                Acc_charge=acc_charge,
             )
         )
 
@@ -72,6 +77,9 @@ def solve_quenched_undoped(
     ratio_AB: float,
     frozen_eq: pd.DataFrame,
     vo_equilibrates: bool = True,
+    acc_cm3: float = 0.0,
+    acc_charge: int = 1,
+
 ) -> pd.DataFrame:
     """
     Quenched at TQK:
@@ -99,7 +107,8 @@ def solve_quenched_undoped(
             else:
                 neg_ionic = 2.0 * VBa_f[i]
 
-            return (n + neg_ionic) - (p + 2.0 * VO)
+            acc = float(acc_charge) * float(acc_cm3)
+            return (n + neg_ionic + acc) - (p + 2.0 * VO)
 
         n = solve_log10_n(neutrality, umin=-30.0, umax=35.0)
         p = KiQ / n
@@ -116,6 +125,8 @@ def solve_quenched_undoped(
                 VTi4=VTi_f[i],
                 ratio_AB=ratio_AB,
                 TQK=TQK,
+                Acc=acc_cm3,
+                Acc_charge=acc_charge,
             )
         )
 
