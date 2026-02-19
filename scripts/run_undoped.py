@@ -7,9 +7,7 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from batio3_defects.undoped import solve_equilibrium_undoped, solve_quenched_undoped  # noqa: E402
-from batio3_defects.mny_codoped import idx_nearest_pO2  # noqa: E402
-from batio3_defects.mny_codoped import B_SITE_DENSITY_CM3
+from batio3_defects.solver import solve_equilibrium, solve_quenched, idx_nearest_pO2, B_SITE_DENSITY_CM3
 
 ACC_PPM = 100.0
 ACC_CHARGE = 1  # A' (singly charged acceptor)
@@ -30,11 +28,9 @@ def main() -> None:
     print(f"[undoped] Using pO2_air ~ {pO2_air:.3g} atm (index={idx_air})")
 
     for r in ratios:
-        df_eq = solve_equilibrium_undoped(pO2_grid=pO2_grid, TK=TK, ratio_AB=r,
-                                  acc_cm3=ACC_CM3, acc_charge=ACC_CHARGE)
-
-        df_q = solve_quenched_undoped(pO2_grid=pO2_grid, TQK=TQK, ratio_AB=r, frozen_eq=df_eq,
-                              vo_equilibrates=True, acc_cm3=ACC_CM3, acc_charge=ACC_CHARGE)
+        df_eq = solve_equilibrium(pO2_grid, TK, r, Mn_total=0.0, Y_total=0.0, acc_cm3=ACC_CM3, acc_charge=ACC_CHARGE)
+        df_q  = solve_quenched(pO2_grid, TQK, r, frozen_eq=df_eq, Mn_total_quench=0.0, Y_total_quench=0.0,
+                       acc_cm3=ACC_CM3, acc_charge=ACC_CHARGE, vo_equilibrates=True)
         
         df_eq.to_csv(results_dir / f"undoped_eq_ratio_{r:.3f}.csv", index=False)
         df_q.to_csv(results_dir / f"undoped_quench_ratio_{r:.3f}.csv", index=False)

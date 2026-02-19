@@ -10,11 +10,7 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from batio3_defects.mny_codoped import (
-    solve_equilibrium_mny,
-    solve_quenched_mny,
-    idx_nearest_pO2,
-)
+from batio3_defects.solver import solve_equilibrium, solve_quenched, idx_nearest_pO2
 
 # ---- Defaults copied from your notebook ----
 TK = 1150 + 273      # equilibrium temperature (K)
@@ -43,26 +39,9 @@ def main() -> None:
     print(f"Using pO2_air ~ {pO2_air:.3g} atm (nearest grid point to 0.21 atm) at index {idx_air}\n")
 
     for r in ratios:
-        # --- Equilibrium ---
-        df_eq = solve_equilibrium_mny(
-            pO2_grid=pO2_grid,
-            TK=TK,
-            ratio_AB=r,
-            Mn_total=Mn_eq[r],
-            Y_total=Y_eq[r],
-        )
-        out_eq = results_dir / f"mny_eq_ratio_{r:.3f}.csv"
-        df_eq.to_csv(out_eq, index=False)
-
-        # --- Quenched ---
-        df_q = solve_quenched_mny(
-            pO2_grid=pO2_grid,
-            TQK=TQK,
-            ratio_AB=r,
-            Mn_total_quench=Mn_q[r],
-            Y_total_quench=Y_q[r],
-            frozen_eq=df_eq,
-        )
+        df_eq = solve_equilibrium(pO2_grid, TK, r, Mn_total=Mn_eq[r], Y_total=Y_eq[r])
+        df_q  = solve_quenched(pO2_grid, TQK, r, frozen_eq=df_eq, Mn_total_quench=Mn_q[r], Y_total_quench=Y_eq[r],
+                       vo_equilibrates=True)
         out_q = results_dir / f"mny_quench_ratio_{r:.3f}.csv"
         df_q.to_csv(out_q, index=False)
 
