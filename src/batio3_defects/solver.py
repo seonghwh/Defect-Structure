@@ -25,11 +25,11 @@ class ReactionConstants:
 def reaction_constants(TK: float) -> ReactionConstants:
     """Reproduce constants exactly as used in your notebook/model."""
     k = K_B_EV_PER_K
-    KR = 1.06e71 * np.exp(-5.69 / (k * TK))
+    KR = 2.56e71 * np.exp(-6.10 / (k * TK))
     Ki = 8.55e44 * np.exp(-2.91 / (k * TK))
     KS = 3.4e105 * np.exp(-2.795 / (k * TK))
-    KMn43 = 2 * 2.0e22 * np.exp(-(3.12 - 1.28) / (k * TK))
-    KMn32 = 0.5 * 2.0e22 * np.exp(-(3.12 - 1.87) / (k * TK))
+    KMn43 = 3.2e22 * np.exp(-(3.12 - 1.28) / (k * TK))
+    KMn32 = 0.8e22 * np.exp(-(3.12 - 1.87) / (k * TK))
     return ReactionConstants(KR=KR, Ki=Ki, KS=KS, KMn43=KMn43, KMn32=KMn32)
 
 
