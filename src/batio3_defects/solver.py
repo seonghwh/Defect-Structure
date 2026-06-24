@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Literal, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -11,6 +11,16 @@ from scipy.optimize import brentq
 # --- Shared constants (same as your current model) ---
 K_B_EV_PER_K = 8.61733e-5
 B_SITE_DENSITY_CM3 = 1.55e22  # used for (1 - A/B) * 1.55E22
+KRModel = Literal["undoped_effective", "mn_effective"]
+
+KR_PARAMETERS: dict[KRModel, tuple[float, float]] = {
+    # This effective KR keeps the undoped A/B=0.999 hole concentration
+    # consistent with the high-conductivity experimental baseline.
+    "undoped_effective": (2.56e71, 6.10),
+    # This effective KR reproduces the Mn-containing defect tables and
+    # represents enhanced oxygen-vacancy compensation in Mn-bearing BTO.
+    "mn_effective": (1.06e71, 5.69),
+}
 
 
 @dataclass(frozen=True)
@@ -20,17 +30,28 @@ class ReactionConstants:
     KS: float
     KMn43: float
     KMn32: float
+    KR_model: KRModel
 
 
-def reaction_constants(TK: float) -> ReactionConstants:
-    """Reproduce constants exactly as used in your notebook/model."""
+def reaction_constants(TK: float, kr_model: KRModel = "undoped_effective") -> ReactionConstants:
+    """Return constants used by an effective canonical defect model."""
     k = K_B_EV_PER_K
-    KR = 2.56e71 * np.exp(-6.10 / (k * TK))
+    try:
+        kr_prefactor, kr_activation_ev = KR_PARAMETERS[kr_model]
+    except KeyError as exc:
+        valid = ", ".join(KR_PARAMETERS)
+        raise ValueError(f"Unknown KR model {kr_model!r}. Expected one of: {valid}") from exc
+
+    KR = kr_prefactor * np.exp(-kr_activation_ev / (k * TK))
     Ki = 8.55e44 * np.exp(-2.91 / (k * TK))
     KS = 3.4e105 * np.exp(-2.795 / (k * TK))
     KMn43 = 3.2e22 * np.exp(-(3.12 - 1.28) / (k * TK))
     KMn32 = 0.8e22 * np.exp(-(3.12 - 1.87) / (k * TK))
-    return ReactionConstants(KR=KR, Ki=Ki, KS=KS, KMn43=KMn43, KMn32=KMn32)
+    return ReactionConstants(KR=KR, Ki=Ki, KS=KS, KMn43=KMn43, KMn32=KMn32, KR_model=kr_model)
+
+
+def default_kr_model(Mn_total: float) -> KRModel:
+    return "mn_effective" if Mn_total > 0.0 else "undoped_effective"
 
 
 def idx_nearest_pO2(pO2_grid: np.ndarray, target_atm: float = 0.21) -> int:
@@ -115,6 +136,7 @@ def solve_equilibrium(
     Y_total: float = 0.0,
     acc_cm3: float = 0.0,
     acc_charge: int = 1,
+    kr_model: Optional[KRModel] = None,
 ) -> pd.DataFrame:
     """
     General equilibrium solver:
@@ -122,7 +144,8 @@ def solve_equilibrium(
       - Mn_total>0, Y_total=0 => Mn doped
       - Mn_total>0, Y_total>0 => Mn+Y codoped
     """
-    rc = reaction_constants(TK)
+    resolved_kr_model = kr_model or default_kr_model(Mn_total)
+    rc = reaction_constants(TK, kr_model=resolved_kr_model)
     KR, Ki, KS, KMn43, KMn32 = rc.KR, rc.Ki, rc.KS, rc.KMn43, rc.KMn32
     acc_term = float(acc_charge) * float(acc_cm3)
 
@@ -158,6 +181,7 @@ def solve_equilibrium(
                 YBa=Y_total,
                 Acc=acc_cm3,
                 Acc_charge=acc_charge,
+                KR_model=rc.KR_model,
                 ratio_AB=ratio_AB,
                 TK=TK,
                 Mn_total=Mn_total,
@@ -177,6 +201,7 @@ def solve_quenched(
     acc_cm3: float = 0.0,
     acc_charge: int = 1,
     vo_equilibrates: bool = True,
+    kr_model: Optional[KRModel] = None,
 ) -> pd.DataFrame:
     """
     General quenched solver:
@@ -185,7 +210,13 @@ def solve_quenched(
       - electrons/holes and Mn redox re-equilibrate at TQK
       - Y_total_quench defaults to frozen_eq["YBa"][0] if present, else 0.0
     """
-    rcQ = reaction_constants(TQK)
+    if kr_model is None and "KR_model" in frozen_eq.columns:
+        kr_models = frozen_eq["KR_model"].unique()
+        if len(kr_models) != 1:
+            raise ValueError("Frozen equilibrium contains multiple KR models.")
+        kr_model = kr_models[0]
+    resolved_kr_model = kr_model or default_kr_model(Mn_total_quench)
+    rcQ = reaction_constants(TQK, kr_model=resolved_kr_model)
     KRQ, KiQ, KMn43Q, KMn32Q = rcQ.KR, rcQ.Ki, rcQ.KMn43, rcQ.KMn32
     acc_term = float(acc_charge) * float(acc_cm3)
 
@@ -238,6 +269,7 @@ def solve_quenched(
                 YBa=float(Y_total_quench),
                 Acc=acc_cm3,
                 Acc_charge=acc_charge,
+                KR_model=rcQ.KR_model,
                 ratio_AB=ratio_AB,
                 TQK=TQK,
                 Mn_total=Mn_total_quench,

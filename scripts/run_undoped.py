@@ -15,6 +15,7 @@ ACC_CM3 = ACC_PPM * 1e-6 * B_SITE_DENSITY_CM3   # ~1.55e18 cm^-3
 
 TK = 1150 + 273
 TQK = 500 + 273
+KR_MODEL = "undoped_effective"
 pO2_grid = np.logspace(-20, 5, 200)
 pO2_air_exact = np.array([0.21])
 ratios = [1.000, 0.999, 0.994]
@@ -24,7 +25,7 @@ def main() -> None:
     results_dir = REPO_ROOT / "results"
     results_dir.mkdir(exist_ok=True)
 
-    print("[undoped] Using exact pO2_air = 0.21 atm for air-point summaries")
+    print(f"[undoped] Using exact pO2_air = 0.21 atm for air-point summaries; KR_model={KR_MODEL}")
 
     for r in ratios:
         # Full-grid calculations for defect diagrams / plotting
@@ -36,6 +37,7 @@ def main() -> None:
             Y_total=0.0,
             acc_cm3=ACC_CM3,
             acc_charge=ACC_CHARGE,
+            kr_model=KR_MODEL,
         )
         df_q = solve_quenched(
             pO2_grid,
@@ -47,6 +49,7 @@ def main() -> None:
             acc_cm3=ACC_CM3,
             acc_charge=ACC_CHARGE,
             vo_equilibrates=True,
+            kr_model=KR_MODEL,
         )
 
         # Exact-air calculations for manuscript table / printed summaries
@@ -58,6 +61,7 @@ def main() -> None:
             Y_total=0.0,
             acc_cm3=ACC_CM3,
             acc_charge=ACC_CHARGE,
+            kr_model=KR_MODEL,
         )
         df_q_air = solve_quenched(
             pO2_air_exact,
@@ -69,6 +73,7 @@ def main() -> None:
             acc_cm3=ACC_CM3,
             acc_charge=ACC_CHARGE,
             vo_equilibrates=True,
+            kr_model=KR_MODEL,
         )
 
         df_eq.to_csv(results_dir / f"undoped_eq_ratio_{r:.3f}.csv", index=False)

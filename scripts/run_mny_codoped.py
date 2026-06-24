@@ -15,6 +15,7 @@ from batio3_defects.solver import solve_equilibrium, solve_quenched
 # ---- Defaults copied from your notebook ----
 TK = 1150 + 273      # equilibrium temperature (K)
 TQK = 500 + 273      # quenched temperature (K)
+KR_MODEL = "mn_effective"
 pO2_grid = np.logspace(-20, 5, 200)
 pO2_air_exact = np.array([0.21])
 
@@ -33,11 +34,11 @@ def main() -> None:
     results_dir = REPO_ROOT / "results"
     results_dir.mkdir(exist_ok=True)
 
-    print("Using exact pO2_air = 0.21 atm for air-point summaries\n")
+    print(f"Using exact pO2_air = 0.21 atm for air-point summaries; KR_model={KR_MODEL}\n")
 
     for r in ratios:
         # Full-grid calculations for defect diagrams / plotting
-        df_eq = solve_equilibrium(pO2_grid, TK, r, Mn_total=Mn_eq[r], Y_total=Y_eq[r])
+        df_eq = solve_equilibrium(pO2_grid, TK, r, Mn_total=Mn_eq[r], Y_total=Y_eq[r], kr_model=KR_MODEL)
         df_q = solve_quenched(
             pO2_grid,
             TQK,
@@ -46,10 +47,11 @@ def main() -> None:
             Mn_total_quench=Mn_q[r],
             Y_total_quench=Y_q[r],
             vo_equilibrates=True,
+            kr_model=KR_MODEL,
         )
 
         # Exact-air calculations for manuscript table / printed summaries
-        df_eq_air = solve_equilibrium(pO2_air_exact, TK, r, Mn_total=Mn_eq[r], Y_total=Y_eq[r])
+        df_eq_air = solve_equilibrium(pO2_air_exact, TK, r, Mn_total=Mn_eq[r], Y_total=Y_eq[r], kr_model=KR_MODEL)
         df_q_air = solve_quenched(
             pO2_air_exact,
             TQK,
@@ -58,6 +60,7 @@ def main() -> None:
             Mn_total_quench=Mn_q[r],
             Y_total_quench=Y_q[r],
             vo_equilibrates=True,
+            kr_model=KR_MODEL,
         )
 
         out_q = results_dir / f"mny_quench_ratio_{r:.3f}.csv"
